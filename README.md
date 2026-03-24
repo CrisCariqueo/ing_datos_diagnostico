@@ -61,3 +61,6 @@ You will see the top 20 most frequent words updating dynamically as the miner ch
 - GitHub API enforces strict rate limiting. The app includes sleep fallbacks to handle being throttled, but for continuous smooth operation, a Token is recommended.
 - The visualizer only maintains state in-memory (in the browser). If you refresh the page, the statistics map resets, but it will immediately start picking up the ongoing stream.
 - Chart updates are throttled to 1 frame per second to prevent client CPU lockup under massive streaming loads.
+    
+## References
+- [Project Generation Prompts](prompts.md)
