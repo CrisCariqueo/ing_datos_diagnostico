@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub API Word Stream</title>
+    <link rel="stylesheet" href="main.css">
+    <!-- Load Chart.js for visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>GitHub Name Miner <span id="pulse"></span></h1>
+            <p>Real-time stream of function words extracted from trending Python & Java repos.</p>
+        </header>
+
+        <main>
+            <div class="stats-card">
+                <div class="stat">
+                    <span class="label">Total Words Mined:</span>
+                    <span class="value" id="totalWords">0</span>
+                </div>
+                <div class="stat">
+                    <span class="label">Total Repos Processed:</span>
+                    <span class="value" id="totalRepos">0</span>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="wordChart"></canvas>
+            </div>
+
+            <div class="feed-container">
+                <h3>Live Feed</h3>
+                <div class="feed" id="liveFeed"></div>
+            </div>
+        </main>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>

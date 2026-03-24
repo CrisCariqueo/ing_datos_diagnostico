@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  miner:
+    build:
+      context: ./miner
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # Optional: Add Github Token to avoid strict rate limits
+      # - GITHUB_TOKEN=your_token_here
+    depends_on:
+      - redis
+    restart: on-failure
+
+  visualizer:
+    build:
+      context: ./visualizer
+    ports:
+      - "3000:3000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - redis
+    restart: on-failure
