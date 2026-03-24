@@ -1,9 +1,46 @@
 import os
 import time
+import json
+import threading
+import redis
 import concurrent.futures
 from github_client import GithubClient
 from parser import extract_functions
 from streamer import RedisStreamer
+
+# Global control state
+is_paused = False
+
+def control_listener():
+    """Listens for pause/resume commands from Redis"""
+    global is_paused
+    host = os.environ.get("REDIS_HOST", "localhost")
+    port = int(os.environ.get("REDIS_PORT", 6379))
+    
+    while True:
+        try:
+            r = redis.Redis(host=host, port=port, decode_responses=True)
+            r.ping() # Ensure connection is ready before trying pub/sub
+            break
+        except redis.exceptions.ConnectionError:
+            time.sleep(2)
+            
+    pubsub = r.pubsub()
+    pubsub.subscribe('github_control')
+    
+    for message in pubsub.listen():
+        if message['type'] == 'message':
+            try:
+                data = json.loads(message['data'])
+                action = data.get('action')
+                if action == 'pause':
+                    print("Received PAUSE command. Halting after current repos.")
+                    is_paused = True
+                elif action == 'resume':
+                    print("Received RESUME command. Continuing mining.")
+                    is_paused = False
+            except Exception as e:
+                print(f"Error parsing control message: {e}")
 
 def process_file(client, streamer, owner, repo, branch, filepath, language):
     """
@@ -39,6 +76,11 @@ def mine_repositories(language, extensions):
                 continue
                 
             for repo in repos:
+                # Check pause state before processing a NEW repository
+                while is_paused:
+                    print("Paused")
+                    time.sleep(1)
+                
                 owner = repo['owner']['login']
                 repo_name = repo['name']
                 default_branch = repo.get('default_branch', 'master')
@@ -75,6 +117,10 @@ def main():
     
     # Wait for Redis to be ready
     time.sleep(5)
+    
+    # Start the control listener in a background thread
+    listener_thread = threading.Thread(target=control_listener, daemon=True)
+    listener_thread.start()
     
     # We could run Python and Java concurrently in different threads
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as main_executor:

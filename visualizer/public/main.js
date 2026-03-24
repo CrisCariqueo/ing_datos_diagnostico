@@ -107,9 +107,9 @@ function addFeedItem(word, repo, lang) {
     const el = document.createElement('div');
     el.className = `feed-item ${lang}`;
     el.innerHTML = `<span><strong style="color: #fff">${word}</strong></span> <span style="color: #64748b; font-size: 0.8rem">in ${repo}</span>`;
-    
+
     feedEl.prepend(el);
-    
+
     // Keep only last 50 items
     if (feedEl.children.length > 50) {
         feedEl.removeChild(feedEl.lastChild);
@@ -123,28 +123,28 @@ eventSource.onmessage = function(event) {
     try {
         const data = JSON.parse(event.data);
         const { word, repo, language } = data;
-        
+
         // Update Stats
         totalWordsMatched++;
         processedRepos.add(repo);
-        
+
         // Update Frequency Map
         const count = wordFrequencies.get(word) || 0;
         wordFrequencies.set(word, count + 1);
-        
+
         // Update UI every 100 events for raw counters
         if (totalWordsMatched % 50 === 0) {
             totalWordsEl.textContent = totalWordsMatched.toLocaleString();
             totalReposEl.textContent = processedRepos.size.toLocaleString();
         }
-        
+
         // Randomly sample items for feed to not overwhelm DOM
         if (Math.random() < 0.1) {
             addFeedItem(word, repo, language);
         }
-        
+
         scheduleUpdate();
-        
+
     } catch (e) {
         console.error("Error parsing event data", e);
     }
@@ -153,3 +153,44 @@ eventSource.onmessage = function(event) {
 eventSource.onerror = function(err) {
     console.error("EventSource failed:", err);
 };
+
+// Control logic
+const controlBtn = document.getElementById('controlBtn');
+const controlMessage = document.getElementById('controlMessage');
+const pulseIndicator = document.getElementById('pulse');
+let isPaused = false;
+
+controlBtn.addEventListener('click', async () => {
+    isPaused = !isPaused;
+    const action = isPaused ? 'pause' : 'resume';
+
+    // Update UI immediately
+    if (isPaused) {
+        controlBtn.textContent = 'Resume Scan';
+        controlBtn.className = 'paused';
+        controlMessage.textContent = 'Pausing... The scan will end after downloading the current repository.';
+        pulseIndicator.style.animation = 'none';
+        pulseIndicator.style.backgroundColor = '#f59e0b'; // warning/yellow
+    } else {
+        controlBtn.textContent = 'Pause Scan';
+        controlBtn.className = 'running';
+        controlMessage.textContent = 'Resuming scan with the next repository...';
+        pulseIndicator.style.animation = 'pulse 1.5s infinite';
+        pulseIndicator.style.backgroundColor = '#10b981';
+
+        // Clear message after a short delay
+        setTimeout(() => {
+            if (!isPaused) controlMessage.textContent = '';
+        }, 3000);
+    }
+
+    try {
+        await fetch('/api/control', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action })
+        });
+    } catch (e) {
+        console.error('Failed to send control command', e);
+    }
+});

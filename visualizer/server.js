@@ -7,6 +7,7 @@ const PORT = process.env.PORT || 3000;
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json());
 
 // Set up Redis Client
 const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
@@ -15,8 +16,10 @@ const REDIS_PORT = process.env.REDIS_PORT || 6379;
 const redisClient = createClient({
   url: `redis://${REDIS_HOST}:${REDIS_PORT}`
 });
+const redisPublisher = redisClient.duplicate();
 
 redisClient.on('error', err => console.error('Redis Client Error', err));
+redisPublisher.on('error', err => console.error('Redis Publisher Error', err));
 
 let clients = [];
 
@@ -36,9 +39,24 @@ app.get('/stream', (req, res) => {
     });
 });
 
+app.post('/api/control', async (req, res) => {
+    try {
+        const { action } = req.body;
+        if (action === 'pause' || action === 'resume') {
+            await redisPublisher.publish('github_control', JSON.stringify({ action }));
+            res.json({ success: true, action });
+        } else {
+            res.status(400).json({ error: 'Invalid action' });
+        }
+    } catch (e) {
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 async function start() {
     try {
         await redisClient.connect();
+        await redisPublisher.connect();
         console.log('Connected to Redis');
         
         // Subscribe to pub/sub channel
